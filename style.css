@@ -1,0 +1,248 @@
+/* Reset básico */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #020005; /* Fundo base */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* OTIMIZAÇÃO 1: Camada de fundo pré-carregada
+   Criamos o universo aqui, mas deixamos invisível.
+   O navegador já deixa "pronto" na memória.
+*/
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* Fica atrás de tudo */
+    opacity: 0; /* Invisível inicialmente */
+    
+    /* O gradiente complexo */
+    background-image: 
+        radial-gradient(circle at 20% 30%, rgba(0, 60, 255, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(100, 0, 200, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255, 0, 150, 0.5) 0%, transparent 40%),
+        radial-gradient(circle at 90% 10%, rgba(0, 200, 255, 0.2) 0%, transparent 60%);
+    background-size: 150% 150%, 130% 130%, 200% 200%, 180% 180%;
+    background-blend-mode: screen;
+
+    /* Aceleração de hardware */
+    will-change: opacity, transform; 
+    transition: opacity 2s ease-in; /* Aparição suave */
+}
+
+/* Container */
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10; /* Fica acima do fundo */
+}
+
+/* Estrela */
+.star {
+    width: 120px;
+    height: 120px;
+    cursor: pointer;
+    fill: white;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.7));
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.4s ease;
+    will-change: transform; /* Avisa o navegador que vai mexer */
+}
+
+.star:hover {
+    transform: scale(1.5);
+    filter: drop-shadow(0 0 20px rgba(255,255,255,1));
+}
+
+/* Explosão da estrela */
+.star.boom {
+    animation: explodeStar 0.8s forwards;
+    pointer-events: none;
+}
+
+/* OTIMIZAÇÃO 2: Ativação
+   Quando a classe .exploded entra, só mudamos a opacidade.
+   A animação de movimento começa aqui.
+*/
+body.exploded::before {
+    opacity: 1;
+    animation: nebulaMove 20s ease-in-out infinite alternate;
+}
+
+/* --- CONTEÚDO --- */
+.content {
+    position: absolute;
+    /* Começa no centro */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    
+    opacity: 0;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    
+    /* Configuração de transições:
+       Opacity: demora 1.5s, começa com delay de 0.5s
+       Top: demora 1s, curva suave
+       Transform: demora 1s (para ajustar escala se quiser depois)
+    */
+    transition: opacity 1.5s ease 0.5s, top 1.2s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    
+    z-index: 20;
+    pointer-events: none;
+    width: 100%; /* Garante alinhamento */
+}
+
+/* Quando o corpo explodir, o texto aparece (ainda no centro) */
+body.exploded .content {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* NOVA CLASSE: Move para o topo */
+.content.move-up {
+    top: 15%; /* Sobe para 15% da altura da tela */
+    /* Mantemos o translate X para centralizar, mas zeramos o Y ou ajustamos */
+    transform: translate(-50%, 0); 
+}
+
+/* Preparação para a área dos botões (Placeholder) */
+.menu-container {
+    position: absolute;
+    top: 50%; /* Centro vertical exato */
+    left: 0;
+    width: 100%;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1s ease;
+    z-index: 25;
+}
+
+/* Menu aparece apenas quando receber a classe ativa */
+.menu-container.show {
+    opacity: 1;
+}
+
+/* Keyframes */
+@keyframes nebulaMove {
+    0% { background-position: 0% 0%, 100% 100%, 50% 50%, 0% 100%; }
+    100% { background-position: 100% 100%, 0% 0%, 50% 60%, 100% 0%; }
+}
+
+@keyframes explodeStar {
+    0% { transform: scale(1.5); opacity: 1; }
+    40% { transform: scale(25); opacity: 0.8; }
+    100% { transform: scale(60); opacity: 0; display: none; }
+}
+
+/* --- CAMPO DE ESTRELAS 3D (WARP SPEED) --- */
+
+/* O Palco 3D */
+.star-field {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2; /* Fica entre o fundo colorido (z-1) e a estrela (z-10) */
+    
+    /* A mágica do 3D no CSS.
+       Define a "distância" do espectador para a tela. */
+    perspective: 1000px;
+    
+    opacity: 0; /* Começa invisível */
+    transition: opacity 2s ease-in; /* Aparece suavemente com a explosão */
+    pointer-events: none; /* Não interfere no clique */
+    overflow: hidden;
+}
+
+/* Ativação após a explosão */
+body.exploded .star-field {
+    opacity: 1;
+}
+
+/* Estilo comum para as camadas */
+.layer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* Camada muito maior que a tela para permitir movimento sem cortar */
+    width: 200vmax;
+    height: 200vmax;
+    transform-style: preserve-3d;
+    /* Centraliza o ponto de origem da animação */
+    transform: translate(-50%, -50%);
+}
+
+/* TRUQUE PARA GERAR ESTRELAS SEM IMAGENS:
+   Usamos múltiplos 'radial-gradient' pequenos e repetidos.
+   Usamos tamanhos de repetição (background-size) diferentes e com números primos
+   para evitar que o padrão pareça um azulejo óbvio.
+*/
+
+/* Camada 1: Estrelas Pequenas (Mais lentas, mais distantes) */
+.layer-1 {
+    background-image: 
+        radial-gradient(circle at center, white 1px, transparent 2px),
+        radial-gradient(circle at center, rgba(255,255,255,0.8) 1px, transparent 2px);
+    background-size: 137px 137px, 211px 211px; /* Números primos para aleatoriedade */
+    background-position: 0 0, 30px 60px;
+    /* Animação no eixo Z */
+    animation: warpFlow 30s linear infinite;
+}
+
+/* Camada 2: Estrelas Médias */
+.layer-2 {
+    background-image: 
+        radial-gradient(circle at center, white 2px, transparent 3px),
+        radial-gradient(circle at center, rgba(255,255,255,0.9) 1.5px, transparent 3px);
+    background-size: 313px 313px, 409px 409px;
+    background-position: 100px 50px, -50px -80px;
+    /* Um pouco mais rápido */
+    animation: warpFlow 25s linear infinite;
+    opacity: 0.8;
+}
+
+/* Camada 3: Estrelas Maiores (Mais rápidas, mais próximas) */
+.layer-3 {
+    background-image: 
+        radial-gradient(circle at center, white 3px, transparent 4px),
+        radial-gradient(circle at center, rgba(255,255,255,0.7) 2px, transparent 4px);
+    background-size: 503px 503px, 601px 601px;
+    background-position: -150px 200px, 80px -120px;
+    /* As mais rápidas */
+    animation: warpFlow 20s linear infinite;
+    opacity: 0.6;
+}
+
+/* ANIMAÇÃO WARP FLOW
+   Move a camada do fundo (longe no eixo Z) para a frente da tela.
+*/
+@keyframes warpFlow {
+    0% {
+        /* Começa longe (-2000px) e pequeno, com rotação leve para dinamismo */
+        transform: translate(-50%, -50%) translateZ(-2000px) rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1; /* Aparece no meio do caminho */
+    }
+    100% {
+        /* Termina passando da tela (+1000px) e rodando levemente */
+        transform: translate(-50%, -50%) translateZ(1000px) rotate(180deg);
+        opacity: 0; /* Desaparece ao passar pela "câmera" */
+    }
+}
