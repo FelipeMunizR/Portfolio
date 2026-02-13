@@ -3,33 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfólio Felipe | Creative Dev</title>
-    
+    <title>Felipe Muniz | Game Dev Portfolio</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <div class="star-field">
-        <div class="layer layer-1"></div>
-        <div class="layer layer-2"></div>
-        <div class="layer layer-3"></div>
-    </div>
-  
-    <div class="container">
-        <svg class="star" id="starTrigger" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <path d="M50 0 C55 25 75 45 100 50 C75 55 55 75 50 100 C45 75 25 55 0 50 C25 45 45 25 50 0 Z" />
-        </svg>
+    <div id="title-screen" class="screen active">
+        <div class="title-content">
+            <h1>FELIPE MUNIZ</h1>
+            <p class="subtitle">Game Developer RPG & Unity</p>
+            <button id="start-btn" class="blink-text">PRESS START</button>
+        </div>
     </div>
 
-    <main class="content">
-        <h1>Bem-vindo ao meu Universo</h1>
-        <p>Onde trago vida às ideias</p>
-    </main>
+    <div id="main-menu-screen" class="screen">
+        <h2>SELECT YOUR EXPERIENCE</h2>
+        
+        <div class="cartridges-container">
+            <div class="cartridge" data-game="about-rpg">
+                <div class="cart-art art-me"></div>
+                <h3>DEV PROFILE (RPG)</h3>
+                <p>Explore my skills chamber.</p>
+            </div>
 
-    <nav class="menu-container" id="menuNav">
-        <p style="color: rgba(255,255,255,0.5); font-style: italic;">(Espaço para os botões)</p>
-    </nav>
+            <div class="cartridge" data-game="company-arcade">
+                <div class="cart-art art-company"></div>
+                <h3>MY STUDIO (ARCADE)</h3>
+                <p>Insert coin to see our vision.</p>
+            </div>
 
-    <script src="script.js"></script>
+            <div class="cartridge" data-game="projects-gallery">
+                <div class="cart-art art-projects"></div>
+                <h3>PROJECTS (GALLERY)</h3>
+                <p>Walk through my creations.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <button id="back-to-menu">← EXIT GAME</button>
+        
+        <div id="game-container">
+            <div id="game-container">
+                <canvas id="rpg-canvas" width="800" height="600"></canvas>
+                
+                <div id="dialog-box" class="hidden">
+                    <h3 id="dialog-title">Título</h3>
+                    <p id="dialog-text">Texto da interação vai aqui...</p>
+                    <span class="dialog-hint">Pressione [ESPAÇO] para fechar</span>
+                </div>
+        </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+    <script src="rpg.js"></script>
 </body>
 </html>
