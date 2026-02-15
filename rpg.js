@@ -1,45 +1,67 @@
-// Aguarda o menu carregar antes de inicializar o RPG
 document.addEventListener('DOMContentLoaded', () => {
 
     const canvas = document.getElementById('rpg-canvas');
     const ctx = canvas.getContext('2d');
+
+    ctx.imageSmoothingEnabled = false;
     
+    // --- NOVO CÓDIGO: CARREGANDO A IMAGEM ---
+    const playerImage = new Image();
+    playerImage.src = 'Playerportfolio.png'; // Certifique-se que o nome está igual!
+
+    // Configuração da sua Grade (Grid)
+    const spriteW = 32; // Largura de UM quadradinho (boneco)
+    const spriteH = 32; // Altura de UM quadradinho (boneco)
+
     // UI Elements
     const dialogBox = document.getElementById('dialog-box');
     const dialogTitle = document.getElementById('dialog-title');
     const dialogText = document.getElementById('dialog-text');
 
-    // Variável de controle do loop
+    // Variáveis de controle
     let animationFrameId;
     let isGameRunning = false;
-    let isDialogActive = false; // Pausa o jogador se estiver lendo
+    let isDialogActive = false;
+    
+    // Controle de Animação (Frame Counter)
+    let gameFrame = 0;
 
-    // Controle de Teclado
     const keys = {
         w: false, a: false, s: false, d: false,
         ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false,
         Space: false
     };
 
-    // O Jogador
     const player = {
-        x: 400, y: 300,
-        width: 32, height: 55,
+        x: 300, y: 200,
+        width: 48, height: 64, // Tamanho do boneco
         speed: 4,
-        color: '#00ffff'
+        direction: 'down', // Começa olhando pra baixo
+        isMoving: false,
+        frameX: 0, // Qual passo ele está dando (0, 1 ou 2)
+        frameY: 0  // Qual linha ele está usando (0, 1, 2 ou 3)
     };
 
-    // Objetos do Cenário (Móveis, Estantes, etc)
+    // MAPA DAS LINHAS (Baseado na sua imagem)
+    const directionRows = {
+        'down': 0,  // Linha 0
+        'left': 1, // Linha 1
+        'right': 2,  // Linha 2
+        'up': 3     // Linha 3
+    };
+
     const interactables = [
         {
-            x: 100, y: 100, width: 64, height: 87, color: '#ff5555',
+            x: 100, y: 100, width: 40, height: 70, 
+            type: 'computer', // Tipo define o desenho
             title: "O Computador",
-            text: "Aqui é onde a mágica acontece... Aqui estão meus projetos da Unity, ."
+            text: "Aqui é onde a mágica acontece... Projetos Unity, C#, roteiros e muito café."
         },
         {
-            x: 600, y: 150, width: 80, height: 103, color: '#55ff55',
+            x: 600, y: 150, width: 50, height: 80, 
+            type: 'bookshelf',
             title: "Estante de Livros",
-            text: "Livros de filosofia... pedagogia... direito... inglês, fantasia e... programação?. Com certeza minha vida acadêmica é bem diversificada..."
+            text: "Filosofia, Pedagogia, Direito e Código Limpo. Uma mistura caótica e necessária."
         }
     ];
 
@@ -55,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (keys.hasOwnProperty(e.key) || e.key === ' ') {
             if (e.key === ' ') {
                 keys.Space = false;
-                handleInteraction(); // Tenta interagir ou fechar diálogo ao soltar o espaço
+                handleInteraction();
             }
             else keys[e.key] = false;
         }
@@ -64,22 +86,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DE INTERAÇÃO ---
     function handleInteraction() {
         if (isDialogActive) {
-            // Se o diálogo está aberto, o espaço fecha ele
             closeDialog();
             return;
         }
 
-        // Se o diálogo está fechado, verifica se está perto de algum objeto
         for (let obj of interactables) {
-            // Cria uma "área de interação" um pouco maior que o objeto
-            const reach = 20; 
+            const reach = 30; // Alcance um pouco maior
             if (player.x < obj.x + obj.width + reach &&
                 player.x + player.width > obj.x - reach &&
                 player.y < obj.y + obj.height + reach &&
                 player.y + player.height > obj.y - reach) {
                 
+                // Olha para o objeto ao interagir
+                if (player.y > obj.y) player.direction = 'up';
+                else if (player.y < obj.y) player.direction = 'down';
+                
                 openDialog(obj.title, obj.text);
-                break; // Interage apenas com o primeiro objeto próximo
+                break;
             }
         }
     }
@@ -89,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
         dialogText.innerText = text;
         dialogBox.classList.remove('hidden');
         isDialogActive = true;
+        // Para o boneco imediatamente
+        player.isMoving = false;
     }
 
     function closeDialog() {
@@ -96,88 +121,177 @@ document.addEventListener('DOMContentLoaded', () => {
         isDialogActive = false;
     }
 
-    // --- FÍSICA E COLISÃO (AABB) ---
+    // --- COLISÃO ---
     function checkCollision(newX, newY) {
-        // Verifica limites do Canvas
         if (newX < 0 || newX + player.width > canvas.width || 
             newY < 0 || newY + player.height > canvas.height) {
             return true;
         }
-
-        // Verifica colisão com os objetos do cenário
         for (let obj of interactables) {
+            // Caixa de colisão levemente menor que o desenho para dar sensação de profundidade (2.5D)
+            const collisionY = obj.y + (obj.height / 2); // Só bate da metade pra baixo
+            const collisionH = obj.height / 2;
+
             if (newX < obj.x + obj.width &&
                 newX + player.width > obj.x &&
-                newY < obj.y + obj.height &&
-                newY + player.height > obj.y) {
-                return true; // Bateu!
+                newY + player.height > collisionY && // Pé do jogador
+                newY + player.height < collisionY + collisionH + 10) { // +10 margem
+                return true;
             }
         }
-        return false; // Caminho livre
+        return false;
     }
 
-    // --- UPDATE (Lógica de Movimento) ---
+    // --- UPDATE ---
     function update() {
-        if (!isGameRunning || isDialogActive) return; // Pausa física se estiver lendo
+        if (!isGameRunning || isDialogActive) return;
 
         let dx = 0;
         let dy = 0;
 
-        if (keys.w || keys.ArrowUp) dy -= player.speed;
-        if (keys.s || keys.ArrowDown) dy += player.speed;
-        if (keys.a || keys.ArrowLeft) dx -= player.speed;
-        if (keys.d || keys.ArrowRight) dx += player.speed;
+        // Reset estado de movimento
+        player.isMoving = false;
 
-        // Tenta mover no eixo X
-        if (dx !== 0 && !checkCollision(player.x + dx, player.y)) {
-            player.x += dx;
+        // Definir direção e movimento
+        if (keys.w || keys.ArrowUp) { dy -= player.speed; player.direction = 'up'; player.isMoving = true; }
+        if (keys.s || keys.ArrowDown) { dy += player.speed; player.direction = 'down'; player.isMoving = true; }
+        if (keys.a || keys.ArrowLeft) { dx -= player.speed; player.direction = 'left'; player.isMoving = true; }
+        if (keys.d || keys.ArrowRight) { dx += player.speed; player.direction = 'right'; player.isMoving = true; }
+
+        // Atualizar ciclo de caminhada
+        if (player.isMoving) {
+            player.walkFrame++;
+        } else {
+            player.walkFrame = 0; // Para com as pernas juntas
         }
+
+        if (dx !== 0 && !checkCollision(player.x + dx, player.y)) player.x += dx;
+        if (dy !== 0 && !checkCollision(player.x, player.y + dy)) player.y += dy;
+    }
+
+    // --- SISTEMA DE DESENHO (SPRITES SIMULADOS) ---
+    
+    function drawComputer(obj) {
+        // Mesa
+        ctx.fillStyle = '#8B4513'; // Marrom madeira
+        ctx.fillRect(obj.x, obj.y + 30, obj.width, obj.height - 30);
         
-        // Tenta mover no eixo Y separadamente (permite deslizar na parede)
-        if (dy !== 0 && !checkCollision(player.x, player.y + dy)) {
-            player.y += dy;
-        }
+        // Monitor (Base)
+        ctx.fillStyle = '#333';
+        ctx.fillRect(obj.x + 10, obj.y + 20, 20, 10);
+        // Monitor (Tela)
+        ctx.fillStyle = '#000';
+        ctx.fillRect(obj.x + 2, obj.y, 36, 25);
+        ctx.fillStyle = '#00ffff'; // Brilho da tela
+        ctx.fillRect(obj.x + 4, obj.y + 2, 32, 21);
+        
+        // Teclado
+        ctx.fillStyle = '#555';
+        ctx.fillRect(obj.x + 5, obj.y + 35, 30, 8);
     }
 
-    // --- DRAW (Renderização Visual) ---
-    function draw() {
-        // Limpa a tela a cada frame
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function drawBookshelf(obj) {
+        // Corpo da estante
+        ctx.fillStyle = '#5D4037';
+        ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+        
+        // Prateleiras
+        ctx.fillStyle = '#3E2723';
+        ctx.fillRect(obj.x + 2, obj.y + 20, obj.width - 4, 2);
+        ctx.fillRect(obj.x + 2, obj.y + 40, obj.width - 4, 2);
+        ctx.fillRect(obj.x + 2, obj.y + 60, obj.width - 4, 2);
 
-        // Desenha os objetos do cenário
-        for (let obj of interactables) {
-            ctx.fillStyle = obj.color;
-            ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+        // Livros (Cores aleatórias fixas pela posição)
+        const colors = ['#F44336', '#2196F3', '#FFEB3B', '#4CAF50'];
+        // Desenhando "livros" simples
+        ctx.fillStyle = colors[0]; ctx.fillRect(obj.x + 5, obj.y + 5, 5, 15);
+        ctx.fillStyle = colors[1]; ctx.fillRect(obj.x + 12, obj.y + 5, 5, 15);
+        ctx.fillStyle = colors[2]; ctx.fillRect(obj.x + 5, obj.y + 25, 5, 15);
+        ctx.fillStyle = colors[3]; ctx.fillRect(obj.x + 25, obj.y + 45, 10, 15);
+    }
+
+    function drawPlayer() {
+        // 1. DESCOBRIR QUAL LINHA (Y) USAR
+        // O código olha a direção atual ('left', 'up', etc) e pega o número da linha correspondente
+        player.frameY = directionRows[player.direction];
+
+        // 2. DESCOBRIR QUAL COLUNA (X) USAR (Animação)
+        if (player.isMoving) {
+            // gameFrame aumenta sem parar.
+            // Dividir por 10 deixa a animação mais lenta (para não piscar muito rápido).
+            // O % 3 faz o número "girar" entre 0, 1 e 2 (porque você tem 3 desenhos por linha).
+            player.frameX = Math.floor(gameFrame / 10) % 3;
+        } else {
+            player.frameX = 0; // Se parar, volta para a pose parada (coluna 0)
+        }
+
+        // 3. O COMANDO DE DESENHO
+        ctx.drawImage(
+            playerImage,             // A: Quem eu vou cortar? (Sua imagem)
             
-            // Desenha um contorno para indicar que é interativo
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(obj.x - 2, obj.y - 2, obj.width + 4, obj.height + 4);
-        }
-
-        // Desenha o jogador
-        ctx.fillStyle = player.color;
-        ctx.fillRect(player.x, player.y, player.width, player.height);
+            // --- O RECORTE (SOURCE) ---
+            player.frameX * spriteW, // B: Onde começa o corte X (Coluna * 32)
+            player.frameY * spriteH, // C: Onde começa o corte Y (Linha * 32)
+            spriteW,                 // D: Largura do corte (32px)
+            spriteH,                 // E: Altura do corte (32px)
+            
+            // --- A COLAGEM (DESTINATION) ---
+            player.x,                // F: Onde colar na tela X
+            player.y,                // G: Onde colar na tela Y
+            player.width * 2,        // H: Largura final (Multipliquei por 2 pra dar Zoom)
+            player.height * 2        // I: Altura final (Zoom)
+        );
     }
 
-    // --- O GAME LOOP ---
+    // --- DRAW ---
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Fundo (Chão de madeira simples)
+        ctx.fillStyle = '#4e4e4e'; // Cinza escuro
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Grid do chão (opcional, para dar perspectiva)
+        ctx.strokeStyle = '#555';
+        ctx.beginPath();
+        for(let i=0; i<canvas.width; i+=40) { ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); }
+        for(let i=0; i<canvas.height; i+=40) { ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); }
+        ctx.stroke();
+
+        // Desenhar Objetos
+        // DICA: Desenhamos na ordem do Y para criar "fake 3D" (o que está mais embaixo cobre o que está em cima)
+        
+        // Cria lista de tudo que precisa ser desenhado (Objetos + Jogador)
+        const renderList = [...interactables, { ...player, type: 'player' }];
+        
+        // Ordena por Y (quem tem Y maior é desenhado por último, ficando "na frente")
+        renderList.sort((a, b) => (a.y + a.height) - (b.y + b.height));
+
+        for (let item of renderList) {
+            if (item.type === 'computer') drawComputer(item);
+            else if (item.type === 'bookshelf') drawBookshelf(item);
+            else if (item.type === 'player') drawPlayer();
+        }
+    }
+
+    // --- GAME LOOP ---
     function gameLoop() {
         update();
         draw();
-        
+        gameFrame++;
         if (isGameRunning) {
-            // Chama o próximo frame de forma otimizada pelo navegador
             animationFrameId = requestAnimationFrame(gameLoop);
         }
     }
 
-    // --- EXPORTAR CONTROLES PARA O main.js ---
-    // Colocamos as funções no window para o main.js poder iniciar/parar o jogo
+    // --- WINDOW EXPORTS ---
     window.startRPG = function() {
         canvas.style.display = 'block';
         isGameRunning = true;
-        player.x = 400; // Reseta a posição
-        player.y = 300;
+        // Centraliza
+        player.x = canvas.width / 2 - player.width / 2;
+        player.y = canvas.height / 2 - player.height / 2;
+        player.direction = 'down';
         gameLoop();
     };
 

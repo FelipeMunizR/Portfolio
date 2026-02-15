@@ -170,8 +170,8 @@ body, html {
     background-color: #2b2b2b; /* Cor do chão temporária */
     image-rendering: pixelated; /* Deixa pixel art nítida depois */
     display: none; /* Escondido até iniciar o jogo */
-    width: 1600px;
-    height: 550px;
+    width: 100%;
+    height: 100%;
 }
 
 #dialog-box {
